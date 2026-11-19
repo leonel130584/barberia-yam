@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Barbería YAM">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="manifest" href="manifest.json">
+<script>document.write('<link rel="manifest" href="'+(location.hash==="#reservar"?"manifest-reservar.json":"manifest.json")+'">')</script>
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
 <style>
@@ -114,7 +114,7 @@ function upd(){const a=$("bka");if(!a)return;const r=bl();a.href="https://wa.me/
 function chk(){const r=bl();let m="";if(!(bs.n||"").trim())m="Escribí tu nombre.";else if(!bs.d)m="Elegí el día.";else if(!bs.h)m="Elegí la hora estimada de llegada.";else if(!r.tel)m="Falta el número de WhatsApp del barbero.";$("bm").textContent=m;return !m}
 function book(){
 const today=new Date().toISOString().slice(0,10);bs.d=bs.d||today;const cur=BARB.find(x=>x.id===bs.b);
-$("bkv").innerHTML=`<h1>💈 Reservá en barbería YAM</h1><div class="card">
+$("bkv").innerHTML=`<h1>💈 Reservá en barbería YAM</h1>${instCard()}<div class="card">
 <label>Tu nombre</label><input value="${esc(bs.n)}" oninput="bs.n=this.value;upd()">
 <label style="display:block;margin-top:10px">Barbero</label>
 <div class="row" style="margin:4px 0 0">${BARB.map(b=>`<button class="${bs.b===b.id?"":"g"}" style="flex:1" onclick="bs.b='${b.id}';bs.s=0;book()">${b.n}</button>`).join("")}</div>
@@ -129,6 +129,15 @@ const ph=s=>{s=String(s).replace(/\D/g,"");return s.length===8?"505"+s:s};
 async function imp(){try{const r=await navigator.contacts.select(["name","tel"],{multiple:true});r.forEach((x,i)=>{const p=ph((x.tel&&x.tel[0])||"");if(!p||C.some(c=>c.phone===p))return;C.push({id:Date.now()+i,name:(x.name&&x.name[0])||"",phone:p,color:"",debt:0})});save();draw()}catch(e){$("fm").innerHTML='<div class="card m">Tu celular o navegador no permite importar contactos aquí. Usá “Pegar lista”.</div>'}}
 function bulk(){$("fm").innerHTML=`<div class="card"><label>Una clienta por línea: nombre, número, monto (nombre y monto son opcionales)</label><textarea id="bt" rows="6" placeholder="María, 88554466, 500"></textarea><div class="row" style="margin:8px 0 0"><button onclick="doBulk()">Agregar</button><button class="g" onclick="$('fm').innerHTML=''">Cancelar</button></div></div>`}
 function doBulk(){$("bt").value.split("\n").forEach((l,i)=>{let name="",tel="",debt=0;l.split(/[,;\t]/).map(s=>s.trim()).filter(Boolean).forEach(s=>{const d=s.replace(/\D/g,"");if(/^[\d\s+\-()]+$/.test(s)&&d.length>=8&&!tel)tel=ph(s);else if(/^[\d.]+$/.test(s))debt=parseFloat(s)||0;else name=s});if(name||tel)C.push({id:Date.now()+i,name,phone:tel,color:"",debt})});save();$("fm").innerHTML="";draw()}
+let dip=null;
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();dip=e});
+addEventListener("appinstalled",()=>{dip=null;if(location.hash==="#reservar")book()});
+const std=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+const instCard=()=>std()?"":`<button style="width:100%;margin-bottom:6px" onclick="inst()">📲 Instalar app / crear acceso directo</button><div id="im" class="m" style="margin-bottom:12px"></div>`;
+async function inst(){
+if(dip){dip.prompt();try{await dip.userChoice}catch(e){}dip=null;return}
+const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+$("im").textContent=ios?"En iPhone: tocá el botón Compartir (cuadrito con flecha) y elegí “Agregar a pantalla de inicio”.":"En Android: tocá el menú ⋮ del navegador y elegí “Instalar app” o “Agregar a pantalla de inicio”."}
 draw();route();
 </script>
 <script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){})</script></body></html>
