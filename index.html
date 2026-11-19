@@ -42,7 +42,7 @@ form,.mv{display:grid;gap:8px}
 label{font-size:13px;color:var(--mu)}
 </style></head><body>
 <div id="own"><h1>💇‍♀️ Mi peluquería</h1>
-<div class="row"><a class="w" href="#reservar" style="flex:1;text-align:center;padding:10px">📅 Ver pantalla de reservas</a></div>
+<div class="row"><a class="w" href="#reservar" style="flex:1;text-align:center;padding:10px">👀 Vista del cliente</a><button style="flex:1" onclick="rvOpen()">📋 Reservas recibidas</button></div>
 <div class="tot"><span>Me deben en total</span><b id="tot">C$0</b></div>
 <div class="row"><input id="q" placeholder="Buscar clienta…" oninput="draw()"><button onclick="openForm()">+ Nueva</button></div>
 <div class="row"><button class="g" style="flex:1" onclick="imp()">📇 Importar contactos</button><button class="g" style="flex:1" onclick="bulk()">📋 Pegar lista</button></div>
@@ -116,6 +116,7 @@ function book(){
 const today=new Date().toISOString().slice(0,10);bs.d=bs.d||today;const cur=BARB.find(x=>x.id===bs.b);
 $("bkv").innerHTML=`<h1>💈 Reservá en barbería YAM</h1>${instCard()}<div class="card">
 <label>Tu nombre</label><input value="${esc(bs.n)}" oninput="bs.n=this.value;upd()">
+<label style="display:block;margin-top:10px">Tu WhatsApp (opcional, para que te confirmen)</label><input inputmode="tel" value="${esc(bs.p)}" oninput="bs.p=this.value">
 <label style="display:block;margin-top:10px">Barbero</label>
 <div class="row" style="margin:4px 0 0">${BARB.map(b=>`<button class="${bs.b===b.id?"":"g"}" style="flex:1" onclick="bs.b='${b.id}';bs.s=0;book()">${b.n}</button>`).join("")}</div>
 <label style="display:block;margin-top:10px">Precios de ${cur.n}: elegí tu corte</label>
@@ -123,7 +124,7 @@ ${PRECIOS[bs.b].map((p,i)=>`<div class="card" style="margin:6px 0;padding:10px 1
 <label style="display:block;margin-top:10px">Día</label><input type="date" min="${today}" value="${bs.d}" oninput="bs.d=this.value;upd()">
 <label style="display:block;margin-top:10px">Hora estimada de llegada</label><input type="time" value="${esc(bs.h)}" oninput="bs.h=this.value;upd()">
 ${cur.tel?"":`<label style="display:block;margin-top:10px">WhatsApp del barbero (con código, ej. 50588888888)</label><input inputmode="tel" value="${esc(bs.t)}" oninput="bs.t=this.value;upd()">`}
-<a id="bka" class="w" style="display:block;text-align:center;padding:12px;margin-top:14px" target="_blank" rel="noopener" href="#reservar" onclick="return chk()">📲 Enviar reserva por WhatsApp</a><div id="bm" class="m" style="color:var(--warn)"></div></div>`;
+<button id="bkb" style="width:100%;margin-top:14px;padding:12px" onclick="send()">✅ Reservar</button><div id="bm" class="m" style="color:var(--warn)"></div></div>`;
 upd()}
 const ph=s=>{s=String(s).replace(/\D/g,"");return s.length===8?"505"+s:s};
 async function imp(){try{const r=await navigator.contacts.select(["name","tel"],{multiple:true});r.forEach((x,i)=>{const p=ph((x.tel&&x.tel[0])||"");if(!p||C.some(c=>c.phone===p))return;C.push({id:Date.now()+i,name:(x.name&&x.name[0])||"",phone:p,color:"",debt:0})});save();draw()}catch(e){$("fm").innerHTML='<div class="card m">Tu celular o navegador no permite importar contactos aquí. Usá “Pegar lista”.</div>'}}
@@ -138,6 +139,31 @@ async function inst(){
 if(dip){dip.prompt();try{await dip.userChoice}catch(e){}dip=null;return}
 const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
 $("im").textContent=ios?"En iPhone: tocá el botón Compartir (cuadrito con flecha) y elegí “Agregar a pantalla de inicio”.":"En Android: tocá el menú ⋮ del navegador y elegí “Instalar app” o “Agregar a pantalla de inicio”."}
+const API="https://script.google.com/macros/s/AKfycbyMisZuxdTKP5sGCab_gp4lj8-i0i6EqNjN0F5SI1jCn2YcOQlwQVplrcZk_xCF-eycFQ/exec";
+async function send(){
+let m="";if(!(bs.n||"").trim())m="Escribí tu nombre.";else if(!bs.d)m="Elegí el día.";else if(!bs.h)m="Elegí la hora estimada de llegada.";
+$("bm").textContent=m;if(m)return;
+if(!API){$("bm").textContent="La app todavía no está conectada para recibir reservas.";return}
+const b=BARB.find(x=>x.id===bs.b),s=PRECIOS[bs.b][bs.s],btn=$("bkb");
+btn.disabled=true;btn.textContent="Enviando…";
+try{const r=await fetch(API,{method:"POST",body:JSON.stringify({barbero:b.n,cliente:bs.n.trim(),telefono:ph(bs.p||""),servicio:s[0],precio:s[1],dia:bs.d,hora:bs.h})});const j=await r.json();
+if(j.ok){$("bkv").innerHTML=`<h1>✅ ¡Reserva enviada!</h1><div class="card"><b>${b.n}</b><div class="m">✂️ ${s[0]} · ${money(s[1])}</div><div class="m">📅 ${fd(bs.d)} · ⏰ ${bs.h}</div><div class="m" style="margin-top:8px">${b.n.split(" ")[0]} te va a confirmar. ¡Gracias!</div><button style="width:100%;margin-top:12px" onclick="bs.h='';book()">Hacer otra reserva</button></div>`;return}
+m=j.error==="ocupado"?"Esa hora ya está reservada con "+b.n+". Elegí otra hora.":"No se pudo reservar. Probá de nuevo."}
+catch(e){m="No hay conexión. Probá de nuevo."}
+$("bm").textContent=m;btn.disabled=false;btn.textContent="✅ Reservar"}
+let RS=[],rf="";
+function rvOpen(){let k="";try{k=localStorage.getItem("yamk")||""}catch(e){}
+$("fm").innerHTML=`<div class="card"><label>Clave de reservas</label><input id="rk" type="password" value="${esc(k)}"><div class="row" style="margin:8px 0 0"><button onclick="rvLoad()">Ver reservas</button><button class="g" onclick="$('fm').innerHTML=''">Cerrar</button></div><div id="rl"></div></div>`;if(k)rvLoad()}
+async function rvLoad(){const k=$("rk").value;try{localStorage.setItem("yamk",k)}catch(e){}
+if(!API){$("rl").innerHTML='<div class="m">Falta conectar la app (API).</div>';return}
+$("rl").innerHTML='<div class="m">Cargando…</div>';
+try{const r=await fetch(API+"?accion=lista&clave="+encodeURIComponent(k));const j=await r.json();
+if(j.error){$("rl").innerHTML='<div class="m">Clave incorrecta.</div>';return}
+RS=j.reservas;rvDraw()}catch(e){$("rl").innerHTML='<div class="m">No se pudo cargar.</div>'}}
+async function rvSet(id,e){try{await fetch(API+"?accion=estado&id="+id+"&estado="+e+"&clave="+encodeURIComponent($("rk").value))}catch(x){}rvLoad()}
+function rvDraw(){const today=new Date().toISOString().slice(0,10);
+const L=RS.filter(r=>String(r.dia)>=today&&r.estado!=="Cancelada"&&(!rf||r.barbero===rf)).sort((a,b)=>(a.dia+a.hora).localeCompare(b.dia+b.hora));
+$("rl").innerHTML=`<div class="row" style="margin:10px 0">${["",...BARB.map(b=>b.n)].map(n=>`<button class="${rf===n?"":"g"}" style="flex:1;padding:8px 4px;font-size:13px" onclick="rf='${n}';rvDraw()">${n?n.split(" ")[0]:"Todos"}</button>`).join("")}</div>`+(L.length?L.map(r=>`<div class="card" style="margin:8px 0"><b>${fd(String(r.dia))} · ${esc(r.hora)}</b> — ${esc(r.cliente)}<div class="m">${esc(r.barbero)} · ${esc(r.servicio)} ${money(r.precio)} · ${esc(r.estado)}</div><div class="acts">${r.telefono?`<a class="w" href="https://wa.me/${r.telefono}?text=${encodeURIComponent("Hola "+String(r.cliente).split(" ")[0]+"! Tu reserva en barbería YAM el "+fd(String(r.dia))+" a las "+r.hora+" está confirmada ✅")}" target="_blank" rel="noopener">📲 Avisar</a>`:""}<button class="g" onclick="rvSet('${r.id}','Confirmada')">Confirmar</button><button class="g" onclick="rvSet('${r.id}','Cancelada')">Cancelar</button></div></div>`).join(""):'<div class="m">No hay reservas próximas.</div>')}
 draw();route();
 </script>
 <script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){})</script></body></html>
