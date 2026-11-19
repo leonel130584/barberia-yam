@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Barbería YAM</title>
+<meta name="theme-color" content="#c2407a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Barbería YAM">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#faf6f8;--card:#fff;--tx:#2a2230;--mu:#7b6f83;--ac:#c2407a;--ok:#1f9d55;--bd:#eadfe6;--warn:#c2410c;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1520;--card:#261f2d;--tx:#f3eef6;--mu:#a99bb3;--ac:#e0629d;--ok:#4ade80;--bd:#3a3043;--warn:#fb923c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1a1520;--card:#261f2d;--tx:#f3eef6;--mu:#a99bb3;--ac:#e0629d;--ok:#4ade80;--bd:#3a3043;--warn:#fb923c;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:0 0 12px}
+.tot{background:var(--ac);color:#fff;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.tot b{font-size:24px}
+input,button{font:inherit}
+input,textarea{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx)}
+button{border:0;border-radius:10px;padding:10px 12px;background:var(--ac);color:#fff;cursor:pointer}
+button.g{background:transparent;color:var(--mu);border:1px solid var(--bd)}
+button.w{background:#25a244}
+a.w{background:#25a244;color:#fff;border-radius:10px;padding:8px 10px;font-size:14px;text-decoration:none;display:inline-block}
+.row{display:flex;gap:8px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:14px;margin-bottom:10px}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.n{font-weight:600;font-size:17px}
+.m{color:var(--mu);font-size:14px;margin-top:2px}
+.deb{font-weight:700;font-size:17px;color:var(--ok);white-space:nowrap}
+.deb.d{color:var(--warn)}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.acts button{font-size:14px;padding:8px 10px}
+form,.mv{display:grid;gap:8px}
+.mv{margin-top:10px;grid-template-columns:1fr auto auto}
+.empty{text-align:center;color:var(--mu);padding:28px 0}
+label{font-size:13px;color:var(--mu)}
+</style></head><body>
+<div id="own"><h1>💇‍♀️ Mi peluquería</h1>
+<div class="row"><a class="w" href="#reservar" style="flex:1;text-align:center;padding:10px">📅 Ver pantalla de reservas</a></div>
+<div class="tot"><span>Me deben en total</span><b id="tot">C$0</b></div>
+<div class="row"><input id="q" placeholder="Buscar clienta…" oninput="draw()"><button onclick="openForm()">+ Nueva</button></div>
+<div class="row"><button class="g" style="flex:1" onclick="imp()">📇 Importar contactos</button><button class="g" style="flex:1" onclick="bulk()">📋 Pegar lista</button></div>
+<div class="row"><button class="g" style="width:100%" onclick="msgEd()">✏️ Editar mensaje de recordatorio</button></div><div id="fm"></div>
+<div id="list"></div></div>
+<div id="bkv" style="display:none"></div>
+<script>
+let C=[],open=null,edit=null;
+try{C=JSON.parse(localStorage.getItem("pel")||"[]")}catch(e){C=[]}
+const save=()=>{try{localStorage.setItem("pel",JSON.stringify(C))}catch(e){}};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const money=n=>"C$"+Math.round(n).toLocaleString("es-NI");
+function openForm(id){
+  edit=id||"new";const c=C.find(x=>x.id===id)||{name:"",phone:"",color:"",debt:0};
+  $("fm").innerHTML=`<form class="card" onsubmit="event.preventDefault();saveC()">
+  <label>Nombre (opcional)</label><input id="fn" value="${esc(c.name)}">
+  <label>WhatsApp (con código de país, ej. 5491112345678)</label><input id="fp" inputmode="tel" value="${esc(c.phone)}">
+  <label>Color / fórmula</label><input id="fc" value="${esc(c.color)}" placeholder="Ej: 7.1 + oxidante 20 vol">
+  ${id?"":`<label>Deuda inicial</label><input id="fd" type="number" inputmode="decimal" value="0">`}
+  <div class="row" style="margin:0"><button>Guardar</button><button type="button" class="g" onclick="$('fm').innerHTML=''">Cancelar</button></div></form>`;
+  $("fn").focus();
+}
+function saveC(){
+  const o={name:$("fn").value.trim(),phone:ph($("fp").value),color:$("fc").value.trim()};
+  if(edit==="new")C.push({id:Date.now(),debt:parseFloat(($("fd")||{}).value)||0,...o});
+  else Object.assign(C.find(x=>x.id===edit),o);
+  save();$("fm").innerHTML="";draw();
+}
+function move(id,sign){
+  const v=parseFloat($("a"+id).value);if(!v||v<=0)return;
+  const c=C.find(x=>x.id===id);c.debt=Math.max(0,c.debt+sign*v);save();draw();
+}
+function del(id){if(confirm("¿Borrar esta clienta?")){C=C.filter(x=>x.id!==id);save();draw()}}
+let TPL="Hola {nombre}! Te escribo de la barbería YAM para recordarte que tenés un saldo pendiente de {saldo}. ¡Gracias!";
+try{TPL=(localStorage.getItem("pelmsg")||TPL).replace(/peluquer[ií]a/g,"barbería YAM")}catch(e){}
+const fd=d=>d.split("-").reverse().join("/");
+const lv=c=>c.visits&&c.visits.length?`<div class="m">📅 Última visita: ${fd(c.visits[0].date)}</div>`:"";
+const hist=c=>`<div style="margin-top:12px"><label>Historial de colores</label><div class="mv" style="grid-template-columns:auto 1fr auto"><input id="vd${c.id}" type="date" value="${new Date().toISOString().slice(0,10)}"><input id="vc${c.id}" placeholder="Color / fórmula"><button onclick="addVisit(${c.id})">+</button></div>${(c.visits||[]).map((v,i)=>`<div class="m" style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span>📅 ${fd(v.date)} · ${esc(v.color)}</span><button class="g" style="padding:2px 8px" onclick="delVisit(${c.id},${i})">✕</button></div>`).join("")}</div>`;
+function addVisit(id){const c=C.find(x=>x.id===id),d=$("vd"+id).value,t=$("vc"+id).value.trim();if(!t||!d)return;c.visits=c.visits||[];c.visits.push({date:d,color:t});c.visits.sort((a,b)=>b.date.localeCompare(a.date));c.color=c.visits[0].color;save();draw()}
+function delVisit(id,i){const c=C.find(x=>x.id===id);c.visits.splice(i,1);if(c.visits.length)c.color=c.visits[0].color;save();draw()}
+function msgEd(){$("fm").innerHTML=`<div class="card"><label>Mensaje (usá {nombre} y {saldo})</label><textarea id="mt" rows="4">${esc(TPL)}</textarea><div class="row" style="margin:8px 0 0"><button onclick="saveMsg()">Guardar</button><button class="g" onclick="$('fm').innerHTML=''">Cancelar</button></div></div>`}
+function saveMsg(){TPL=$("mt").value.trim()||TPL;try{localStorage.setItem("pelmsg",TPL)}catch(e){}$("fm").innerHTML=""}
+function waLink(c){const t=(c.debt>0?TPL:"Hola {nombre}! Te escribo de la barbería YAM.").replace(/ ?\{nombre\}/g,c.name?" "+c.name.split(" ")[0]:"").replace(/\{saldo\}/g,money(c.debt));return "https://wa.me/"+c.phone+"?text="+encodeURIComponent(t)}
+function wa(id){
+  const c=C.find(x=>x.id===id);
+  const t=(c.debt>0?TPL:"Hola {nombre}! Te escribo de la peluquería.").replace(/\{nombre\}/g,c.name.split(" ")[0]).replace(/\{saldo\}/g,money(c.debt));
+  window.open("https://wa.me/"+c.phone+"?text="+encodeURIComponent(t),"_blank");
+}
+function draw(){
+  const q=$("q").value.toLowerCase();
+  $("tot").textContent=money(C.reduce((s,c)=>s+c.debt,0));
+  const L=C.filter(c=>(c.name+" "+c.phone).toLowerCase().includes(q)).sort((a,b)=>b.debt-a.debt||a.name.localeCompare(b.name));
+  $("list").innerHTML=L.length?L.map(c=>`<div class="card"><div class="top" onclick="open=open===${c.id}?null:${c.id};draw()">
+  <div><div class="n">${esc(c.name||("+"+c.phone))}</div><div class="m">🎨 ${esc(c.color)||"Sin color cargado"}</div>${lv(c)}</div>
+  <div class="deb ${c.debt>0?"d":""}">${c.debt>0?money(c.debt):"Al día ✓"}</div></div>
+  <div class="acts">${c.phone?`<a class="w" href="${waLink(c)}" target="_blank" rel="noopener">📲 WhatsApp</a>`:""}<button class="g" onclick="openForm(${c.id});scrollTo(0,0)">✏️ Editar</button><button class="g" onclick="del(${c.id})">🗑 Borrar</button></div>
+  ${open===c.id?`<div class="mv"><input id="a${c.id}" type="number" inputmode="decimal" placeholder="Monto"><button onclick="move(${c.id},-1)">Pagó</button><button class="g" onclick="move(${c.id},1)">+ Deuda</button></div>
+  ${hist(c)}`:""}</div>`).join(""):`<div class="empty">Todavía no hay clientas. Tocá “+ Nueva”.</div>`;
+}
+const BARB=[{id:"joel",n:"Joel Guerrero",tel:"50557503718"},{id:"jonathan",n:"Jonathan Campbell",tel:"50588554466"}];
+const SERV=[["Corte clásico",150],["Corte + barba",220],["Barba",100],["Corte de niño",120],["Cejas",50]];
+const PRECIOS={joel:SERV,jonathan:SERV};
+let bs={b:"joel",s:0};
+function route(){const r=location.hash==="#reservar";$("own").style.display=r?"none":"";$("bkv").style.display=r?"":"none";if(r)book()}
+addEventListener("hashchange",route);
+function bl(){const b=BARB.find(x=>x.id===bs.b),s=PRECIOS[bs.b][bs.s],tel=(b.tel||bs.t||"").replace(/\D/g,"");const t=`Hola ${b.n.split(" ")[0]}! Soy ${bs.n||""}. Quiero reservar en barbería YAM.\n✂️ Servicio: ${s[0]} (${money(s[1])})\n📅 Día: ${bs.d?fd(bs.d):""}\n⏰ Hora estimada de llegada: ${bs.h||""}\nGracias!`;return{tel,t}}
+function upd(){const a=$("bka");if(!a)return;const r=bl();a.href="https://wa.me/"+r.tel+"?text="+encodeURIComponent(r.t)}
+function chk(){const r=bl();let m="";if(!(bs.n||"").trim())m="Escribí tu nombre.";else if(!bs.d)m="Elegí el día.";else if(!bs.h)m="Elegí la hora estimada de llegada.";else if(!r.tel)m="Falta el número de WhatsApp del barbero.";$("bm").textContent=m;return !m}
+function book(){
+const today=new Date().toISOString().slice(0,10);bs.d=bs.d||today;const cur=BARB.find(x=>x.id===bs.b);
+$("bkv").innerHTML=`<h1>💈 Reservá en barbería YAM</h1><div class="card">
+<label>Tu nombre</label><input value="${esc(bs.n)}" oninput="bs.n=this.value;upd()">
+<label style="display:block;margin-top:10px">Barbero</label>
+<div class="row" style="margin:4px 0 0">${BARB.map(b=>`<button class="${bs.b===b.id?"":"g"}" style="flex:1" onclick="bs.b='${b.id}';bs.s=0;book()">${b.n}</button>`).join("")}</div>
+<label style="display:block;margin-top:10px">Precios de ${cur.n}: elegí tu corte</label>
+${PRECIOS[bs.b].map((p,i)=>`<div class="card" style="margin:6px 0;padding:10px 12px;display:flex;justify-content:space-between;${bs.s===i?"border-color:var(--ac)":""}" onclick="bs.s=${i};book()"><span>${bs.s===i?"●":"○"} ${p[0]}</span><b>${money(p[1])}</b></div>`).join("")}
+<label style="display:block;margin-top:10px">Día</label><input type="date" min="${today}" value="${bs.d}" oninput="bs.d=this.value;upd()">
+<label style="display:block;margin-top:10px">Hora estimada de llegada</label><input type="time" value="${esc(bs.h)}" oninput="bs.h=this.value;upd()">
+${cur.tel?"":`<label style="display:block;margin-top:10px">WhatsApp del barbero (con código, ej. 50588888888)</label><input inputmode="tel" value="${esc(bs.t)}" oninput="bs.t=this.value;upd()">`}
+<a id="bka" class="w" style="display:block;text-align:center;padding:12px;margin-top:14px" target="_blank" rel="noopener" href="#reservar" onclick="return chk()">📲 Enviar reserva por WhatsApp</a><div id="bm" class="m" style="color:var(--warn)"></div></div>`;
+upd()}
+const ph=s=>{s=String(s).replace(/\D/g,"");return s.length===8?"505"+s:s};
+async function imp(){try{const r=await navigator.contacts.select(["name","tel"],{multiple:true});r.forEach((x,i)=>{const p=ph((x.tel&&x.tel[0])||"");if(!p||C.some(c=>c.phone===p))return;C.push({id:Date.now()+i,name:(x.name&&x.name[0])||"",phone:p,color:"",debt:0})});save();draw()}catch(e){$("fm").innerHTML='<div class="card m">Tu celular o navegador no permite importar contactos aquí. Usá “Pegar lista”.</div>'}}
+function bulk(){$("fm").innerHTML=`<div class="card"><label>Una clienta por línea: nombre, número, monto (nombre y monto son opcionales)</label><textarea id="bt" rows="6" placeholder="María, 88554466, 500"></textarea><div class="row" style="margin:8px 0 0"><button onclick="doBulk()">Agregar</button><button class="g" onclick="$('fm').innerHTML=''">Cancelar</button></div></div>`}
+function doBulk(){$("bt").value.split("\n").forEach((l,i)=>{let name="",tel="",debt=0;l.split(/[,;\t]/).map(s=>s.trim()).filter(Boolean).forEach(s=>{const d=s.replace(/\D/g,"");if(/^[\d\s+\-()]+$/.test(s)&&d.length>=8&&!tel)tel=ph(s);else if(/^[\d.]+$/.test(s))debt=parseFloat(s)||0;else name=s});if(name||tel)C.push({id:Date.now()+i,name,phone:tel,color:"",debt})});save();$("fm").innerHTML="";draw()}
+draw();route();
+</script>
+<script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(function(){})</script></body></html>
